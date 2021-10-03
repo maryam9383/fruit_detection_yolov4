@@ -1,0 +1,10 @@
+# train and val datasets (image directory or *.txt file with image paths)
+train: /home/luis/datasets/wider_face/wider_coco_val/images  # 18K images
+val: /home/luis/datasets/wider_face/wider_coco_val/images # 5k images
+test: /home/luis/datasets/wider_face/wider_coco_val/images  # 20k images
+
+# number of classes
+nc: 1
+
+# class names
+names: ['face']

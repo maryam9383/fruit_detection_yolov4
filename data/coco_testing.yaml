@@ -1,0 +1,17 @@
+# train and val datasets (image directory or *.txt file with image paths)
+train: /home/luis/datasets/yolo_coco/valid/images  # 118k images
+val: /home/luis/datasets/yolo_coco/valid/images # 5k images
+test: /home/luis/datasets/yolo_coco/valid/images  # 20k images for submission to https://competitions.codalab.org/competitions/20794
+
+# number of classes
+nc: 76
+
+# class names
+names: ['airplane', 'apple', 'backpack', 'banana', 'baseball bat', 'baseball glove', 'bear', 'bed', 'bench',
+        'bicycle', 'bird', 'boat', 'book', 'bottle', 'bowl', 'broccoli', 'bus', 'cake', 'car', 'carrot', 'cat',
+        'cell phone', 'chair', 'clock', 'couch', 'cow', 'cup', 'dining table', 'dog', 'donut', 'elephant',
+        'fire hydrant', 'fork', 'frisbee', 'giraffe', 'handbag', 'horse', 'hot dog', 'keyboard', 'kite', 'knife',
+        'laptop', 'microwave', 'motorcycle', 'mouse', 'orange', 'oven', 'person', 'pizza', 'potted plant',
+        'refrigerator', 'remote', 'sandwich', 'scissors', 'sheep', 'sink', 'skateboard', 'skis', 'snowboard', 'spoon',
+        'sports ball', 'stop sign', 'suitcase', 'surfboard', 'teddy bear','tennis racket', 'tie', 'toilet',
+        'traffic light', 'train', 'truck', 'tv', 'umbrella', 'vase', 'wine glass', 'zebra']
