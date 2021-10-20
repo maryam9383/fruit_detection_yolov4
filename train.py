@@ -22,8 +22,8 @@ from models.yolo import Model
 from utils.datasets import create_dataloader
 from utils.general import (
     check_img_size, torch_distributed_zero_first, labels_to_class_weights, plot_labels, check_anchors,
-    labels_to_image_weights, compute_loss, plot_images,plot_images2, fitness, strip_optimizer, plot_results,
-    get_latest_run, check_git_status, check_file, increment_dir, print_mutation, plot_evolution)
+    labels_to_image_weights, compute_loss, plot_images, plot_images2, fitness, strip_optimizer, plot_results,
+    get_latest_run, check_git_status, check_file, increment_dir, print_mutation, plot_evolution,save_loss)
 from utils.google_utils import attempt_download
 from utils.torch_utils import init_seeds, ModelEMA, select_device, intersect_dicts
 
@@ -68,8 +68,8 @@ def train(hyp, opt, device, tb_writer=None):
         model.load_state_dict(state_dict, strict=False)  # load
         print('Transferred %g/%g items from %s' % (len(state_dict), len(model.state_dict()), weights))  # report
     else:
-        model = Model(opt.cfg, ch=3, nc=nc).to(device)# create
-        #model = model.to(memory_format=torch.channels_last)  # create
+        model = Model(opt.cfg, ch=3, nc=nc).to(device)  # create
+        # model = model.to(memory_format=torch.channels_last)  # create
 
     # Optimizer
     nbs = 64  # nominal batch size
@@ -147,7 +147,7 @@ def train(hyp, opt, device, tb_writer=None):
     # Trainloader
     dataloader, dataset = create_dataloader(train_path, imgsz, batch_size, gs, opt, hyp=hyp, augment=True,
                                             cache=opt.cache_images, rect=opt.rect, local_rank=rank,
-                                            world_size=opt.world_size)
+                                            world_size=opt.world_size, mosaic=opt.mosaic)
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
     assert mlc < nc, 'Label class %g exceeds nc=%g in %s. Possible class labels are 0-%g' % (mlc, nc, opt.data, nc - 1)
@@ -157,7 +157,8 @@ def train(hyp, opt, device, tb_writer=None):
         ema.updates = start_epoch * nb // accumulate  # set EMA updates ***
         # local_rank is set to -1. Because only the first process is expected to do evaluation.
         testloader = create_dataloader(test_path, imgsz_test, batch_size, gs, opt, hyp=hyp, augment=False,
-                                       cache=opt.cache_images, rect=True, local_rank=-1, world_size=opt.world_size)[0]
+                                       cache=opt.cache_images, rect=False, local_rank=-1, world_size=opt.world_size,
+                                       mosaic=False)[0]
 
     # Model parameters
     hyp['cls'] *= nc / 80.  # scale coco-tuned hyp['cls'] to current dataset
@@ -192,10 +193,9 @@ def train(hyp, opt, device, tb_writer=None):
     if rank in [0, -1]:
         print('Image sizes %g train, %g test' % (imgsz, imgsz_test))
         print('Using %g dataloader workers' % dataloader.num_workers)
-        print('Starting training for %g epochs...' % epochs)
-
-    images_to_show = 5
-    display_number = nb//images_to_show
+        print('Starting from epoch {:d} training for {:d} epochs...'.format(start_epoch, epochs))
+    images_to_show = 10
+    display_number = nb // images_to_show
     # torch.autograd.set_detect_anomaly(True)
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
@@ -228,6 +228,8 @@ def train(hyp, opt, device, tb_writer=None):
         if rank in [-1, 0]:
             print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
             pbar = tqdm(pbar, total=nb)  # progress bar
+        losses_batches = torch.empty([nb, 4], requires_grad=False)
+        mean_losses_batches = torch.empty([nb, 4], requires_grad=False)
         optimizer.zero_grad()
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             ni = i + nb * epoch  # number integrated batches (since train start)
@@ -256,7 +258,7 @@ def train(hyp, opt, device, tb_writer=None):
             with amp.autocast(enabled=cuda):
                 # Forward
                 pred = model(imgs)
-                #pred = model(imgs.to(memory_format=torch.channels_last))
+                # pred = model(imgs.to(memory_format=torch.channels_last))
 
                 # Loss
                 loss, loss_items = compute_loss(pred, targets.to(device), model)  # scaled by batch_size
@@ -286,14 +288,21 @@ def train(hyp, opt, device, tb_writer=None):
                 pbar.set_description(s)
 
                 # Plot
-                if i % display_number == 0:
-                    f = str(log_dir / ('train_batch%g.jpg' % i))  # filename
-                    result = plot_images2(images=imgs, targets=targets, paths=paths, fname=f)
-                    if tb_writer and result is not None:
-                        tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
-                        # tb_writer.add_graph(model, imgs)  # add model to tensorboard
+                # if i % display_number == 0:
+                #     f = str(log_dir / ('train_batch%g.jpg' % i))  # filename
+                #     result = plot_images2(images=imgs, targets=targets, paths=paths, fname=f)
+                #     if tb_writer and result is not None:
+                #         tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
+                #         ## tb_writer.add_graph(model, imgs)  # add model to tensorboard
 
+            mean_losses_batches[i,:] = mloss.detach()
+            losses_batches[i,:] = loss_items
             # end batch ------------------------------------------------------------------------------------------------
+
+        name_mean_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
+        name_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
+        save_loss(mean_losses_batches,name_mean_loss_file)
+        save_loss(losses_batches,name_loss_file)
 
         # Scheduler
         scheduler.step()
@@ -313,7 +322,7 @@ def train(hyp, opt, device, tb_writer=None):
                                                  single_cls=opt.single_cls,
                                                  dataloader=testloader,
                                                  save_dir=log_dir,
-                                                 epoch = epoch)
+                                                 epoch=epoch)
 
             # Write
             with open(results_file, 'a') as f:
@@ -338,16 +347,17 @@ def train(hyp, opt, device, tb_writer=None):
             save = (not opt.nosave) or (final_epoch and not opt.evolve)
             if save:
                 with open(results_file, 'r') as f:  # create checkpoint
+                    print("Saving epoch: {:d}".format(epoch))
                     ckpt = {'epoch': epoch,
                             'best_fitness': best_fitness,
                             'training_results': f.read(),
                             'model': ema.ema.module if hasattr(ema, 'module') else ema.ema,
                             'optimizer': None if final_epoch else optimizer.state_dict()}
-                print("Saving for epoch {:d}".format(epoch))
+
                 # Save last, best and delete
                 torch.save(ckpt, last)
-                if epoch >= (epochs-30):
-                    torch.save(ckpt, last.replace('.pt','_{:03d}.pt'.format(epoch)))
+                if epoch >= (epochs - 30):
+                    torch.save(ckpt, last.replace('.pt', '_{:03d}.pt'.format(epoch)))
                 if best_fitness == fi:
                     torch.save(ckpt, best)
                 del ckpt
@@ -362,7 +372,7 @@ def train(hyp, opt, device, tb_writer=None):
             if os.path.exists(f1):
                 os.rename(f1, f2)  # rename
                 ispt = f2.endswith('.pt')  # is *.pt
-                strip_optimizer(f2, f2.replace('.pt','_strip.pt')) if ispt else None  # strip optimizer
+                strip_optimizer(f2, f2.replace('.pt', '_strip.pt')) if ispt else None  # strip optimizer
                 os.system('gsutil cp %s gs://%s/weights' % (f2, opt.bucket)) if opt.bucket and ispt else None  # upload
         # Finish
         if not opt.evolve:
@@ -384,6 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='train,test sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
+    parser.add_argument('--mosaic', action='store_true', help='Use Mosaic data augmentation')
     parser.add_argument('--resume', nargs='?', const='get_last', default=False,
                         help='resume from given path/last.pt, or most recent run if blank')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
@@ -520,5 +531,3 @@ if __name__ == '__main__':
         plot_evolution(yaml_file)
         print('Hyperparameter evolution complete. Best results saved as: %s\nCommand to train a new model with these '
               'hyperparameters: $ python train.py --hyp %s' % (yaml_file, yaml_file))
-
-

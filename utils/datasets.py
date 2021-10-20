@@ -47,7 +47,7 @@ def exif_size(img):
 
 
 def create_dataloader(path, imgsz, batch_size, stride, opt, hyp=None, augment=False, cache=False, pad=0.0, rect=False,
-                      local_rank=-1, world_size=1):
+                      local_rank=-1, world_size=1,mosaic = True):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache.
     with torch_distributed_zero_first(local_rank):
         dataset = LoadImagesAndLabels(path, imgsz, batch_size,
@@ -57,11 +57,13 @@ def create_dataloader(path, imgsz, batch_size, stride, opt, hyp=None, augment=Fa
                                       cache_images=cache,
                                       single_cls=opt.single_cls,
                                       stride=int(stride),
-                                      pad=pad)
+                                      pad=pad,
+                                      mosaic=mosaic)
 
     batch_size = min(batch_size, len(dataset))
-    # nw = 1  # number of workers
-    nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
+    # nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
+    nw = batch_size  # number of workers
+    # nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if local_rank != -1 else None
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=batch_size,
@@ -293,7 +295,8 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
-                 cache_images=False, single_cls=False, stride=32, pad=0.0):
+                 cache_images=False, single_cls=False, stride=32, pad=0.0, mosaic=True):
+        print("Augmentation method: \n Augmentaion {:d}; Mosaic {:d}; Rect {:d}; ".format(augment,mosaic,rect))
         try:
             f = []  # image files
             for p in path if isinstance(path, list) else [path]:
@@ -323,8 +326,9 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.augment = augment
         self.hyp = hyp
         self.image_weights = image_weights
-        self.rect = False if image_weights else rect
-        self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
+        self.rect = False if image_weights else (rect )
+        self.standard_size = not self.rect
+        self.mosaic = mosaic and self.standard_size  # load 4 images at a time into a mosaic (only during training)
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
 
@@ -491,7 +495,42 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 img = (img * r + img2 * (1 - r)).astype(np.uint8)
                 labels = np.concatenate((labels, labels2), 0)
 
-        else:
+        elif self.augment and not self.rect:
+            # Load image
+            img, (h0, w0), (h, w) = load_image(self, index)
+
+            # padded_img = np.empty([self.img_size,self.img_size,3], dtype=np.uint8)
+
+            shape = img.shape[:2]
+            labels = self.labels[index]
+
+            padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8)
+            padded_img[:shape[0], :shape[1], :] = img
+            img = padded_img.copy()
+
+            shapes = None
+
+            # MixUp https://arxiv.org/pdf/1710.09412.pdf
+            if random.random() < hyp['mixup']:
+                index2 = random.randint(0, len(self.labels) - 1)
+                img2, (h0, w0), (h, w)= load_image(self, index2)
+                labels2 = self.labels[index2]
+
+                shape2 = img2.shape[:2]
+                padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8)
+                padded_img[:shape2[0], :shape2[1], :] = img2
+                img2 = padded_img.copy()
+
+                r = np.random.beta(8.0, 8.0)  # mixup ratio, alpha=beta=8.0
+                img = (img * r + img2 * (1 - r)).astype(np.uint8)
+                labels = np.concatenate((labels, labels2), 0)
+
+            flipped_shape = np.flip(shape)
+            labels[:, 1:3] *= flipped_shape
+            labels[:, 3:5] *= flipped_shape
+            labels[:, 1:] = xywh2xyxy(labels[:, 1:])
+
+        elif self.rect:
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
 
@@ -511,8 +550,28 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
                 labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
 
+        else:
+            # Load image
+            img, (h0, w0), (h, w) = load_image(self, index)
+            shapes = None
+            # padded_img = np.empty([self.img_size,self.img_size,3], dtype=np.uint8)
+
+            shape = img.shape[:2]
+            labels = self.labels[index]
+
+            padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8)
+            padded_img[:shape[0], :shape[1], :] = img
+            img = padded_img.copy()
+            flipped_shape = np.flip(shape)
+            labels[:, 1:3] *= flipped_shape
+            labels[:, 3:5] *= flipped_shape
+            labels[:, 1:] = xywh2xyxy(labels[:, 1:])
+
+
+
         if self.augment:
             # Augment imagespace
+            # if not self.mosaic:
             if not self.mosaic:
                 img, labels = random_perspective(img, labels,
                                                  degrees=hyp['degrees'],
@@ -714,6 +773,12 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scale
 
 
 def random_perspective(img, targets=(), degrees=10, translate=.1, scale=.1, shear=10, perspective=0.0, border=(0, 0)):
+    """
+    Function to process and image, and its given labels, by the parameters degrees, translate, scale, etc, that
+    defined the geometrical transformation (translation, rotation, scaling up and down). Target is expected as columns
+    [class x1, y1,x2,y2]
+
+    """
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # targets = [cls, xyxy]
 

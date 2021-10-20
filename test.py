@@ -75,7 +75,7 @@ def test(data,
         _ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
         path = data['test'] if opt.task == 'test' else data['val']  # path to val/test images
         dataloader = create_dataloader(path, imgsz, batch_size, model.stride.max(), opt,
-                                       hyp=None, augment=False, cache=False, pad=0.5, rect=True)[0]
+                                       hyp=None, augment=False, cache=False, pad=0.5, rect=True, mosaic=False)[0]
 
     seen = 0
     names = model.names if hasattr(model, 'names') else model.module.names
@@ -187,10 +187,11 @@ def test(data,
             stats.append((correct.cpu(), pred[:, 4].cpu(), pred[:, 5].cpu(), tcls))
 
         # Plot images
-        if batch_i % display_batch_number  == 1:
+        if batch_i % display_batch_number == 1 or batch_i == 48:
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_gt.jpg'.format(epoch, batch_i))  # filename
             plot_images2(img, targets, paths, str(f), names)  # ground truth
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_pred.jpg'.format(epoch, batch_i))
+            print("Files images: ",paths)  # DELETE
             plot_images2(img, output_to_target(output, width, height), paths, str(f), names)  # predictions
 
     # Compute statistics
