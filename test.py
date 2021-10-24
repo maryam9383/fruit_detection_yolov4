@@ -33,7 +33,7 @@ def test(data,
          save_dir='',
          merge=False,
          save_txt=False,
-         epoch = 0):
+         epoch=0):
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -85,8 +85,7 @@ def test(data,
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
 
-
-    display_batch_number = len(dataloader)//6 ## Display 6 times in total
+    display_batch_number = len(dataloader) // 9  ## Display 6 times in total
     # model = model.to(memory_format=torch.channels_last)
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
         img = img.to(device, non_blocking=True)
@@ -110,8 +109,7 @@ def test(data,
             # Run NMS
             t = time_synchronized()
 
-
-            output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, merge=merge)
+            output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, merge=merge) # [[x1,y1,x2,y2,score,class],...]
             t1 += time_synchronized() - t
 
         # Statistics per image
@@ -134,7 +132,7 @@ def test(data,
                 for *xyxy, conf, cls in pred:
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                     with open(txt_path + '.txt', 'a') as f:
-                        f.write(('%g ' * 5 + '\n') % (cls, *xywh))  # label format
+                        f.write(('%g ' * 6 + '\n') % (cls,conf, *xywh))  # label format
 
             # Clip boxes to image bounds
             clip_coords(pred, (height, width))
@@ -191,7 +189,6 @@ def test(data,
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_gt.jpg'.format(epoch, batch_i))  # filename
             plot_images2(img, targets, paths, str(f), names)  # ground truth
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_pred.jpg'.format(epoch, batch_i))
-            print("Files images: ",paths)  # DELETE
             plot_images2(img, output_to_target(output, width, height), paths, str(f), names)  # predictions
 
     # Compute statistics
@@ -295,4 +292,3 @@ if __name__ == '__main__':
             np.savetxt(f, y, fmt='%10.4g')  # save
         os.system('zip -r study.zip study_*.txt')
         # plot_study_txt(f, x)  # plot
-

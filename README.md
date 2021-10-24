@@ -1,6 +1,10 @@
 # Project
 
-This is the implementation of "[Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036)" by "[WongKinYiu](https://github.com/WongKinYiu/ScaledYOLOv4)". I'm not claiming ownership of the original source code. 
+This is the implementation of "[Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036)" 
+by "[WongKinYiu et al](https://github.com/WongKinYiu/ScaledYOLOv4)". I'm not claiming ownership of the original source code. 
+Also the mish cuda implementation was provided by 
+"[Thomas Brandon](https://github.com/thomasbrandon/mish-cuda)" 
+
 
 ## Installation
 
