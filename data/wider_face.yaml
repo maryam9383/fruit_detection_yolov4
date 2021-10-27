@@ -1,5 +1,5 @@
 # train and val datasets (image directory or *.txt file with image paths)
-train: /home/luis/datasets/wider_face/wider_coco_val/images  # 18K images
+train: /home/luis/datasets/wider_face/wider_coco_train/images  # 12K images
 val: /home/luis/datasets/wider_face/wider_coco_val/images # 5k images
 test: /home/luis/datasets/wider_face/wider_coco_val/images  # 20k images
 

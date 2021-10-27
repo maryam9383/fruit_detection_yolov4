@@ -87,6 +87,8 @@ def test(data,
 
     display_batch_number = len(dataloader) // 9  ## Display 6 times in total
     # model = model.to(memory_format=torch.channels_last)
+    size_dataloader = len(dataloader)
+    n_imgs = 0
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
         img = img.to(device, non_blocking=True)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -95,6 +97,7 @@ def test(data,
         nb, _, height, width = img.shape  # batch size, channels, height, width
         whwh = torch.Tensor([width, height, width, height]).to(device)
         # Disable gradients
+
         with torch.no_grad():
             # Run model
             t = time_synchronized()
@@ -126,6 +129,7 @@ def test(data,
 
             # Append to text file
             if save_txt:
+                n_imgs += 1
                 gn = torch.tensor(shapes[si][0])[[1, 0, 1, 0]]  # normalization gain whwh
                 txt_path = str(out / Path(paths[si]).stem)
                 pred[:, :4] = scale_coords(img[si].shape[1:], pred[:, :4], shapes[si][0], shapes[si][1])  # to original
@@ -191,6 +195,8 @@ def test(data,
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_pred.jpg'.format(epoch, batch_i))
             plot_images2(img, output_to_target(output, width, height), paths, str(f), names)  # predictions
 
+
+    print("N images saved: {:d}/{:d} ".format(n_imgs,size_dataloader))
     # Compute statistics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
