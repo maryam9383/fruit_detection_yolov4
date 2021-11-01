@@ -313,25 +313,6 @@ def train(hyp, opt, device, tb_writer=None):
             if ema is not None:
                 ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'gr', 'names', 'stride'])
             final_epoch = epoch + 1 == epochs
-            # Save model
-            save = (not opt.nosave) or (final_epoch and not opt.evolve)
-            if save:
-                with open(results_file, 'r') as f:  # create checkpoint
-                    print("Saving epoch: {:d}".format(epoch))
-                    ckpt = {'epoch': epoch,
-                            'best_fitness': best_fitness,
-                            'training_results': f.read(),
-                            'model': ema.ema.module if hasattr(ema, 'module') else ema.ema,
-                            'optimizer': None if final_epoch else optimizer.state_dict()}
-
-                # Save last, best and delete
-                torch.save(ckpt, last)
-                if epoch >= (epochs - 30):
-                    torch.save(ckpt, last.replace('.pt', '_{:03d}.pt'.format(epoch)))
-                if best_fitness == fi:
-                    torch.save(ckpt, best)
-                del ckpt
-
             if not opt.notest or final_epoch:  # Calculate mAP
                 results, maps, times = test.test(opt.data,
                                                  batch_size=batch_size,
@@ -340,15 +321,13 @@ def train(hyp, opt, device, tb_writer=None):
                                                  model=ema.ema.module if hasattr(ema.ema, 'module') else ema.ema,
                                                  single_cls=opt.single_cls,
                                                  dataloader=testloader,
-                                                 save_dir=log_dir,
-                                                 epoch=epoch)
+                                                 save_dir=log_dir)
 
             # Write
             with open(results_file, 'a') as f:
                 f.write(s + '%10.4g' * 7 % results + '\n')  # P, R, mAP, F1, test_losses=(GIoU, obj, cls)
             if len(opt.name) and opt.bucket:
                 os.system('gsutil cp %s gs://%s/results/results%s.txt' % (results_file, opt.bucket, opt.name))
-
 
             # Tensorboard
             if tb_writer:
@@ -362,6 +341,24 @@ def train(hyp, opt, device, tb_writer=None):
             fi = fitness(np.array(results).reshape(1, -1))  # fitness_i = weighted combination of [P, R, mAP, F1]
             if fi > best_fitness:
                 best_fitness = fi
+
+            # Save model
+            save = (not opt.nosave) or (final_epoch and not opt.evolve)
+            if save:
+                with open(results_file, 'r') as f:  # create checkpoint
+                    ckpt = {'epoch': epoch,
+                            'best_fitness': best_fitness,
+                            'training_results': f.read(),
+                            'model': ema.ema.module if hasattr(ema, 'module') else ema.ema,
+                            'optimizer': None if final_epoch else optimizer.state_dict()}
+
+                # Save last, best and delete
+                torch.save(ckpt, last)
+                if epoch >= (epochs - 30):
+                    torch.save(ckpt, last.replace('.pt', '_{:03d}.pt'.format(epoch)))
+                if best_fitness == fi:
+                    torch.save(ckpt, best)
+                del ckpt
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
 
