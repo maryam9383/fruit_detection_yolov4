@@ -33,7 +33,8 @@ def test(data,
          save_dir='',
          merge=False,
          save_txt=False,
-         epoch=0):
+         epoch=0,
+         save_images=True):
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -189,7 +190,7 @@ def test(data,
             stats.append((correct.cpu(), pred[:, 4].cpu(), pred[:, 5].cpu(), tcls))
 
         # Plot images
-        if batch_i % display_batch_number == 1 or batch_i == 48:
+        if save_images and (batch_i % display_batch_number == 1):
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_gt.jpg'.format(epoch, batch_i))  # filename
             plot_images2(img, targets, paths, str(f), names)  # ground truth
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_pred.jpg'.format(epoch, batch_i))

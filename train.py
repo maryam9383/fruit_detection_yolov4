@@ -23,9 +23,10 @@ from utils.datasets import create_dataloader
 from utils.general import (
     check_img_size, torch_distributed_zero_first, labels_to_class_weights, plot_labels, check_anchors,
     labels_to_image_weights, compute_loss, plot_images, plot_images2, fitness, strip_optimizer, plot_results,
-    get_latest_run, check_git_status, check_file, increment_dir, print_mutation, plot_evolution,save_loss)
+    get_latest_run, check_git_status, check_file, increment_dir, print_mutation, plot_evolution, save_loss)
 from utils.google_utils import attempt_download
 from utils.torch_utils import init_seeds, ModelEMA, select_device, intersect_dicts
+
 
 def train(hyp, opt, device, tb_writer=None):
     print(f'Hyperparameters {hyp}')
@@ -295,14 +296,14 @@ def train(hyp, opt, device, tb_writer=None):
                 #         tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
                 #         ## tb_writer.add_graph(model, imgs)  # add model to tensorboard
 
-            mean_losses_batches[i,:] = mloss.detach()
-            losses_batches[i,:] = loss_items
+            mean_losses_batches[i, :] = mloss.detach()
+            losses_batches[i, :] = loss_items
             # end batch ------------------------------------------------------------------------------------------------
 
         name_mean_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
         name_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
-        save_loss(mean_losses_batches,name_mean_loss_file)
-        save_loss(losses_batches,name_loss_file)
+        save_loss(mean_losses_batches, name_mean_loss_file)
+        save_loss(losses_batches, name_loss_file)
 
         # Scheduler
         scheduler.step()
@@ -321,7 +322,8 @@ def train(hyp, opt, device, tb_writer=None):
                                                  model=ema.ema.module if hasattr(ema.ema, 'module') else ema.ema,
                                                  single_cls=opt.single_cls,
                                                  dataloader=testloader,
-                                                 save_dir=log_dir)
+                                                 save_dir=log_dir,
+                                                 save_images=opt.save_img_test)
 
             # Write
             with open(results_file, 'a') as f:
@@ -409,6 +411,7 @@ if __name__ == '__main__':
     parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
     parser.add_argument('--logdir', type=str, default='runs/', help='logging directory')
+    parser.add_argument('--save-img-test', action='store_true', help='use torch.optim.Adam() optimizer')
     opt = parser.parse_args()
 
     # Resume
@@ -452,7 +455,20 @@ if __name__ == '__main__':
             print('Start Tensorboard with "tensorboard --logdir %s", view at http://localhost:6006/' % opt.logdir)
             tb_writer = SummaryWriter(log_dir=increment_dir(Path(opt.logdir) / 'exp', opt.name))  # runs/exp
 
-        train(hyp, opt, device, tb_writer)
+        batch_size = opt.batch_size
+        while (batch_size > 1):
+            opt.batch_size = batch_size
+            try:
+                train(hyp, opt, device, tb_writer)
+            except RuntimeError as e:
+                if 'out of memory' in str(e):
+                    batch_size = batch_size//2
+                    print('| WARNING: ran out of memory using batch_size {:d} retrying with batch size {:d} '
+                          ''.format(batch_size*2, batch_size))
+                    # opt.batch_size = batch_size
+                torch.cuda.empty_cache()
+            else:
+                break
 
     # Evolve hyperparameters (optional)
     else:
