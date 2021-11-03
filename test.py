@@ -34,7 +34,8 @@ def test(data,
          merge=False,
          save_txt=False,
          epoch=0,
-         save_images=True):
+         save_images=True,
+         rect=True):
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -76,7 +77,7 @@ def test(data,
         _ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
         path = data['test'] if opt.task == 'test' else data['val']  # path to val/test images
         dataloader = create_dataloader(path, imgsz, batch_size, model.stride.max(), opt,
-                                       hyp=None, augment=False, cache=False, pad=0.5, rect=True, mosaic=False)[0]
+                                       hyp=None, augment=False, cache=False, pad=0.5, rect=rect, mosaic=False)[0]
 
     seen = 0
     names = model.names if hasattr(model, 'names') else model.module.names
@@ -113,7 +114,8 @@ def test(data,
             # Run NMS
             t = time_synchronized()
 
-            output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, merge=merge) # [[x1,y1,x2,y2,score,class],...]
+            output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres,
+                                         merge=merge)  # [[x1,y1,x2,y2,score,class],...]
             t1 += time_synchronized() - t
 
         # Statistics per image
@@ -137,7 +139,7 @@ def test(data,
                 for *xyxy, conf, cls in pred:
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                     with open(txt_path + '.txt', 'a') as f:
-                        f.write(('%g ' * 6 + '\n') % (cls,conf, *xywh))  # label format
+                        f.write(('%g ' * 6 + '\n') % (cls, conf, *xywh))  # label format
 
             # Clip boxes to image bounds
             clip_coords(pred, (height, width))
@@ -196,8 +198,7 @@ def test(data,
             f = Path(save_dir) / ('test_e{:03d}_batch{:04d}_pred.jpg'.format(epoch, batch_i))
             plot_images2(img, output_to_target(output, width, height), paths, str(f), names)  # predictions
 
-
-    print("N images saved: {:d}/{:d} ".format(n_imgs,size_dataloader))
+    print("N images saved: {:d}/{:d} ".format(n_imgs, size_dataloader))
     # Compute statistics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
@@ -270,6 +271,9 @@ if __name__ == '__main__':
     parser.add_argument('--merge', action='store_true', help='use Merge NMS')
     parser.add_argument('--verbose', action='store_true', help='report mAP by class')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
+    parser.add_argument('--rect', action='store_true', help='Use if prediction want to be done on images in their '
+                                                            'original size without padding (often rectangular)')
+
     opt = parser.parse_args()
     opt.save_json |= opt.data.endswith('coco.yaml')
     opt.data = check_file(opt.data)  # check file
@@ -285,7 +289,8 @@ if __name__ == '__main__':
              opt.save_json,
              opt.single_cls,
              opt.augment,
-             opt.verbose)
+             opt.verbose,
+             rect=opt.rect)
 
     elif opt.task == 'study':  # run over a range of settings and save/plot
         for weights in ['']:
