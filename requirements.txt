@@ -4,7 +4,8 @@
 matplotlib>=3.2.2
 Cython==0.29.23
 numpy==1.20.1
-opencv-python==4.5.3
+pycocotools==2.0.2  # COCO mAP
+opencv-python==4.5.3.56
 Pillow
 PyYAML>=5.3.1
 scipy==1.6.2
@@ -27,5 +28,4 @@ pandas
 
 # extras --------------------------------------
 # Cython  # for pycocotools https://github.com/cocodataset/cocoapi/issues/172
-pycocotools==2.0.2  # COCO mAP
 thop  # FLOPS computation
