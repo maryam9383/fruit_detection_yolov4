@@ -6,7 +6,7 @@ import shutil
 import time
 from pathlib import Path
 from threading import Thread
-
+from pycocotools.coco import COCO
 import cv2
 import numpy as np
 import torch
@@ -508,12 +508,12 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             padded_img[:shape[0], :shape[1], :] = img
             img = padded_img.copy()
 
-            shapes = None
+            shapes = (h0, w0), ((h / h0, w / w0), (0, 0))
 
             # MixUp https://arxiv.org/pdf/1710.09412.pdf
             if random.random() < hyp['mixup']:
                 index2 = random.randint(0, len(self.labels) - 1)
-                img2, (h0, w0), (h, w)= load_image(self, index2)
+                img2, (h0, w0), (h, w) = load_image(self, index2)
                 labels2 = self.labels[index2]
 
                 shape2 = img2.shape[:2]
@@ -553,8 +553,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         else:
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
-            shapes = None
-            # padded_img = np.empty([self.img_size,self.img_size,3], dtype=np.uint8)
+            shapes = (h0, w0), ((h / h0, w / w0), (0, 0))
+
 
             shape = img.shape[:2]
             labels = self.labels[index]

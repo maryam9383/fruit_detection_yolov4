@@ -229,7 +229,7 @@ def train(hyp, opt, device, tb_writer=None):
         if rank in [-1, 0]:
             print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
             pbar = tqdm(pbar, total=nb)  # progress bar
-        losses_batches = torch.empty([nb, 4], requires_grad=False)
+        # losses_batches = torch.empty([nb, 4], requires_grad=False)
         mean_losses_batches = torch.empty([nb, 4], requires_grad=False)
         optimizer.zero_grad()
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
@@ -297,13 +297,13 @@ def train(hyp, opt, device, tb_writer=None):
                 #         ## tb_writer.add_graph(model, imgs)  # add model to tensorboard
 
             mean_losses_batches[i, :] = mloss.detach()
-            losses_batches[i, :] = loss_items
+            # losses_batches[i, :] = loss_items
             # end batch ------------------------------------------------------------------------------------------------
 
         name_mean_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
-        name_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
+        # name_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
         save_loss(mean_losses_batches, name_mean_loss_file)
-        save_loss(losses_batches, name_loss_file)
+        # save_loss(losses_batches, name_loss_file)
 
         # Scheduler
         scheduler.step()
