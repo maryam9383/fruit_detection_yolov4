@@ -1,17 +1,17 @@
 # pip install -r requirements.txt
 
 # base ----------------------------------------
-matplotlib>=3.2.2
-Cython==0.29.23
 numpy==1.20.1
+Cython==0.29.23
 pycocotools==2.0.2  # COCO mAP
 opencv-python==4.5.3.56
-Pillow
-PyYAML>=5.3.1
 scipy==1.6.2
 torch==1.9.0
 torchvision==0.10.0
 tqdm==4.59.0
+matplotlib>=3.2.2
+Pillow
+PyYAML>=5.3.1
 
 # logging -------------------------------------
 tensorboard==2.6.0
