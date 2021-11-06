@@ -7,13 +7,13 @@ numpy==1.20.1
 opencv-python>=4.1.2
 Pillow
 PyYAML>=5.3.1
-scipy>=1.4.1
+scipy==1.6.2
 torch==1.9.0
 torchvision==0.10.0
 tqdm==4.59.0
 
 # logging -------------------------------------
-tensorboard>=2.4.1
+tensorboard==2.6.0
 # wandb
 
 # plotting ------------------------------------
