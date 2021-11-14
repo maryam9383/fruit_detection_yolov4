@@ -1,9 +1,9 @@
 # pip install -r requirements.txt
 
 # base ----------------------------------------
-numpy==1.20.1
 Cython==0.29.23
-pycocotools==2.0.2  # COCO mAP
+numpy==1.20.1
+pycocotools==2.0.2
 opencv-python==4.5.3.56
 scipy==1.6.2
 torch==1.9.0

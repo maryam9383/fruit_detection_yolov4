@@ -1,7 +1,7 @@
 # train and val datasets (image directory or *.txt file with image paths)
-train: ../datasets/wider_train/images  # 12K images
-val: ../datasets/wider_val/images # 5k images
-test: ../datasets/wider_val/images  # 20k images
+train: ../datasets/wider/wider_train/images  # 12K images
+val: ../datasets/wider/wider_val/images # 5k images
+test: ../datasets/wider/wider_val/images  # 20k images
 
 # number of classes
 nc: 1
