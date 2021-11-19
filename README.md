@@ -95,23 +95,11 @@ Just `Ctrl+C` to stop training and resume training by:
 python -m torch.distributed.launch --nproc_per_node 4 train.py --batch-size 64 --img 896 896 --data coco.yaml --cfg yolov4-p5.yaml --weights 'runs/exp0_yolov4-p5/weights/last.pt' --sync-bn --device 0,1,2,3 --name yolov4-p5 --resume
 ```
 
-## Citation
-
-```
-@InProceedings{Wang_2021_CVPR,
-    author    = {Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
-    title     = {{Scaled-YOLOv4}: Scaling Cross Stage Partial Network},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2021},
-    pages     = {13029-13038}
-}
-```
-
 ## Acknowledgements
 
 <details><summary> <b>Expand</b> </summary>
-
+ 
+* [Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036) 
 * [https://github.com/AlexeyAB/darknet](https://github.com/AlexeyAB/darknet)
 * [https://github.com/WongKinYiu/PyTorch_YOLOv4](https://github.com/WongKinYiu/PyTorch_YOLOv4)
 * [https://github.com/ultralytics/yolov3](https://github.com/ultralytics/yolov3)

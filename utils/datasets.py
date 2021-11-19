@@ -550,7 +550,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
                 labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
 
-        else:
+        else: # square images, by default.
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
             shapes = (h0, w0), ((h / h0, w / w0), (0, 0))

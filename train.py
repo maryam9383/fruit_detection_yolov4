@@ -246,6 +246,8 @@ def train(hyp, opt, device, tb_writer=None):
                     x['lr'] = np.interp(ni, xi, [0.1 if j == 2 else 0.0, x['initial_lr'] * lf(epoch)])
                     if 'momentum' in x:
                         x['momentum'] = np.interp(ni, xi, [0.9, hyp['momentum']])
+            else:
+                accumulate = opt.accumulation
 
             # Multi-scale
             if opt.multi_scale:
@@ -392,6 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--hyp', type=str, default='', help='hyperparameters path, i.e. data/hyp.scratch.yaml')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs')
+    parser.add_argument('--accumulation', type=int, default=1, help='N batches to accumulate gradient')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='train,test sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--mosaic', action='store_true', help='Use Mosaic data augmentation')
@@ -462,9 +465,10 @@ if __name__ == '__main__':
                 train(hyp, opt, device, tb_writer)
             except RuntimeError as e:
                 if 'out of memory' in str(e):
+                    original_bs = batch_size
                     batch_size = batch_size//2
                     print('| WARNING: ran out of memory using batch_size {:d} retrying with batch size {:d} '
-                          ''.format(batch_size*2, batch_size))
+                          ''.format(original_bs, batch_size))
                     # opt.batch_size = batch_size
                 torch.cuda.empty_cache()
             else:
