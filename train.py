@@ -158,7 +158,7 @@ def train(hyp, opt, device, tb_writer=None):
         ema.updates = start_epoch * nb // accumulate  # set EMA updates ***
         # local_rank is set to -1. Because only the first process is expected to do evaluation.
         testloader = create_dataloader(test_path, imgsz_test, batch_size, gs, opt, hyp=hyp, augment=False,
-                                       cache=opt.cache_images, rect=False, local_rank=-1, world_size=opt.world_size,
+                                       cache=opt.cache_images, rect=opt.rect, local_rank=-1, world_size=opt.world_size,
                                        mosaic=False)[0]
 
     # Model parameters
@@ -325,6 +325,7 @@ def train(hyp, opt, device, tb_writer=None):
                                                  single_cls=opt.single_cls,
                                                  dataloader=testloader,
                                                  save_dir=log_dir,
+                                                 epoch=epoch,
                                                  save_images=opt.save_img_test)
 
             # Write
@@ -358,7 +359,7 @@ def train(hyp, opt, device, tb_writer=None):
 
                 # Save last, best and delete
                 torch.save(ckpt, last)
-                if epoch >= (epochs - 30):
+                if epoch >= (epochs - 35):
                     torch.save(ckpt, last.replace('.pt', '_{:03d}.pt'.format(epoch)))
                 if best_fitness == fi:
                     torch.save(ckpt, best)

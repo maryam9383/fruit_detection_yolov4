@@ -87,7 +87,7 @@ def test(data,
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
 
-    display_batch_number = len(dataloader) // 9  ## Display 6 times in total
+    display_batch_number = len(dataloader) // 9  ## Display 9 times in total
     # model = model.to(memory_format=torch.channels_last)
     size_dataloader = len(dataloader)
     n_imgs = 0
