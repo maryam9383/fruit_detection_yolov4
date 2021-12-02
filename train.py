@@ -471,6 +471,8 @@ if __name__ == '__main__':
                     print('| WARNING: ran out of memory using batch_size {:d} retrying with batch size {:d} '
                           ''.format(original_bs, opt.batch_size ))
                     # opt.batch_size = batch_size
+                else:
+                    print("ERROR: \n"+str(e))
                 torch.cuda.empty_cache()
             else:
                 break
