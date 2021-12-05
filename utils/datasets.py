@@ -508,7 +508,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             padded_img[:shape[0], :shape[1], :] = img
             img = padded_img.copy()
 
-            shapes = (h0, w0), ((1, 1), (0, 0))
+            # shapes = (h0, w0), ((1, 1), (0, 0))
 
             # MixUp https://arxiv.org/pdf/1710.09412.pdf
             if random.random() < hyp['mixup']:
@@ -529,6 +529,10 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             labels[:, 1:3] *= flipped_shape
             labels[:, 3:5] *= flipped_shape
             labels[:, 1:] = xywh2xyxy(labels[:, 1:])
+
+            shape = img.shape[:2]
+            shapes = (h0, w0), ((shape[0] / h0, shape[1] / w0), (0, 0))
+
 
         elif self.rect:
             # Load image
@@ -553,19 +557,23 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         else: # square images, by default.
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
-            shapes = (h0, w0), ((1, 1), (0, 0))
-
+            # shapes = (h0, w0), ((h / h0, w / w0), (0, 0))
 
             shape = img.shape[:2]
             labels = self.labels[index]
 
-            padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8)
-            padded_img[:shape[0], :shape[1], :] = img
-            img = padded_img.copy()# square imagess
             flipped_shape = np.flip(shape)
             labels[:, 1:3] *= flipped_shape
             labels[:, 3:5] *= flipped_shape
             labels[:, 1:] = xywh2xyxy(labels[:, 1:])
+
+            padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8) # padding image
+            padded_img[:shape[0], :shape[1], :] = img
+            img = padded_img.copy()
+
+
+            shape = img.shape[:2]
+            shapes = (h0, w0), ((shape[0] / h0, shape[1] / w0), (0, 0))
 
 
 
