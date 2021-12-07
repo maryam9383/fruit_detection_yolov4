@@ -467,7 +467,7 @@ if __name__ == '__main__':
             except RuntimeError as e:
                 if 'out of memory' in str(e):
                     original_bs = batch_size
-                    opt.batch_size  = batch_size//2
+                    opt.batch_size = batch_size//2
                     print('| WARNING: ran out of memory using batch_size {:d} retrying with batch size {:d} '
                           ''.format(original_bs, opt.batch_size ))
                     # opt.batch_size = batch_size
