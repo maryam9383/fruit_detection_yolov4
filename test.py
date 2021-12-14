@@ -34,7 +34,7 @@ def test(data,
          merge=False,
          save_txt=False,
          epoch=0,
-         save_images=True,
+         save_images=False,
          rect=True):
     # Initialize/load model and set device
     training = model is not None
@@ -110,6 +110,7 @@ def test(data,
             # Compute loss
             if training:  # if model has loss hyperparameters
                 loss += compute_loss([x.float() for x in train_out], targets, model)[1][:3]  # GIoU, obj, cls
+                print("\n loss: ",loss[0],'\n')
 
             # Run NMS
             t = time_synchronized()

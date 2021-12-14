@@ -14,7 +14,7 @@ nvidia-docker run --name yolov4_csp -it -v your_coco_path/:/coco/ -v your_code_p
 
 # install mish-cuda, if you use different pytorch version, you could try https://github.com/thomasbrandon/mish-cuda
 cd /
-git clone https://github.com/JunnYu/mish-cuda
+git clone https://github.com/WongKinYiu/ScaledYOLOv4.git
 cd mish-cuda
 python setup.py build install
 
