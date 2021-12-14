@@ -35,7 +35,8 @@ def train(hyp, opt, device, tb_writer=None):
     os.makedirs(wdir, exist_ok=True)
     last = wdir + 'last.pt'
     best = wdir + 'best.pt'
-    results_file = str(log_dir / 'results.txt')
+    results_file1 = str(log_dir / 'results1.txt')
+    results_file2 = str(log_dir / 'results2.txt')
     epochs, batch_size, total_batch_size, weights, rank = \
         opt.epochs, opt.batch_size, opt.total_batch_size, opt.weights, opt.global_rank
 
@@ -52,7 +53,8 @@ def train(hyp, opt, device, tb_writer=None):
     with open(opt.data) as f:
         data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
     train_path = data_dict['train']
-    test_path = data_dict['val']
+    test_path1 = data_dict['val']
+    test_path2 = data_dict['test']
     nc, names = (1, ['item']) if opt.single_cls else (int(data_dict['nc']), data_dict['names'])  # number classes, names
     assert len(names) == nc, '%g names found for nc=%g dataset in %s' % (len(names), nc, opt.data)  # check
 
@@ -113,7 +115,12 @@ def train(hyp, opt, device, tb_writer=None):
 
         # Results
         if ckpt.get('training_results') is not None:
-            with open(results_file, 'w') as file:
+            with open(results_file1, 'w') as file:
+                file.write(ckpt['training_results'])  # write results.txt
+
+        # Results
+        if ckpt.get('training_results') is not None:
+            with open(results_file2, 'w') as file:
                 file.write(ckpt['training_results'])  # write results.txt
 
         # Epochs
@@ -157,7 +164,10 @@ def train(hyp, opt, device, tb_writer=None):
     if rank in [-1, 0]:
         ema.updates = start_epoch * nb // accumulate  # set EMA updates ***
         # local_rank is set to -1. Because only the first process is expected to do evaluation.
-        testloader = create_dataloader(test_path, imgsz_test, batch_size, gs, opt, hyp=hyp, augment=False,
+        testloader1 = create_dataloader(test_path1, imgsz_test, batch_size, gs, opt, hyp=hyp, augment=False,
+                                       cache=opt.cache_images, rect=opt.rect, local_rank=-1, world_size=opt.world_size,
+                                       mosaic=False)[0]
+        testloader2 = create_dataloader(test_path2, imgsz_test, batch_size, gs, opt, hyp=hyp, augment=False,
                                        cache=opt.cache_images, rect=opt.rect, local_rank=-1, world_size=opt.world_size,
                                        mosaic=False)[0]
 
@@ -323,16 +333,17 @@ def train(hyp, opt, device, tb_writer=None):
                                                  save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
                                                  model=ema.ema.module if hasattr(ema.ema, 'module') else ema.ema,
                                                  single_cls=opt.single_cls,
-                                                 dataloader=testloader,
+                                                 dataloader=testloader1,
                                                  save_dir=log_dir,
                                                  epoch=epoch,
                                                  save_images=opt.save_img_test)
 
             # Write
-            with open(results_file, 'a') as f:
+            with open(results_file1, 'a') as f:
                 f.write(s + '%10.4g' * 7 % results + '\n')  # P, R, mAP, F1, test_losses=(GIoU, obj, cls)
+
             if len(opt.name) and opt.bucket:
-                os.system('gsutil cp %s gs://%s/results/results%s.txt' % (results_file, opt.bucket, opt.name))
+                os.system('gsutil cp %s gs://%s/results/results%s.txt' % (results_file1, opt.bucket, opt.name))
 
             # Tensorboard
             if tb_writer:
@@ -350,7 +361,7 @@ def train(hyp, opt, device, tb_writer=None):
             # Save model
             save = (not opt.nosave) or (final_epoch and not opt.evolve)
             if save:
-                with open(results_file, 'r') as f:  # create checkpoint
+                with open(results_file1, 'r') as f:  # create checkpoint
                     ckpt = {'epoch': epoch,
                             'best_fitness': best_fitness,
                             'training_results': f.read(),
@@ -364,6 +375,20 @@ def train(hyp, opt, device, tb_writer=None):
                 if best_fitness == fi:
                     torch.save(ckpt, best)
                 del ckpt
+            if not opt.notest or final_epoch:  # Calculate mAP
+                results, maps, times = test.test(opt.data,
+                                                 batch_size=batch_size,
+                                                 imgsz=imgsz_test,
+                                                 save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
+                                                 model=ema.ema.module if hasattr(ema.ema, 'module') else ema.ema,
+                                                 single_cls=opt.single_cls,
+                                                 dataloader=testloader2,
+                                                 save_dir=log_dir,
+                                                 epoch=epoch,
+                                                 save_images=False)
+
+            with open(results_file2, 'a') as f:
+                f.write(s + '%10.4g' * 7 % results + '\n')  # P, R, mAP, F1, test_losses=(GIoU, obj, cls)
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
 
@@ -388,7 +413,9 @@ def train(hyp, opt, device, tb_writer=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+
+    parser = argparse.ArgumentParser(description='Traning procedure that evaluate 2 validation datasets, so as'
+                                                 'to prove which one is a better indicator.')
     parser.add_argument('--weights', type=str, default='yolov4-p5.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='', help='model.yaml path')
     parser.add_argument('--data', type=str, default='data/coco128.yaml', help='data.yaml path')

@@ -1,6 +1,8 @@
-FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
+# FROM nvidia/cuda:11.2.2-devel-ubuntu20.04
 # FROM nvidia/cuda:11.4.2-cudnn8-devel-ubuntu20.04
-# ARG DEBIAN_FRONTEND=noninteractive # for ubuntu 20.04
+FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
+# ENV DEBIAN_FRONTEND=nonintercative
+ARG DEBIAN_FRONTEND=noninteractive # for ubuntu 20.04
 
 
 RUN apt-get update  -y \
