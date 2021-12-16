@@ -1,7 +1,7 @@
 # train and val datasets (image directory or *.txt file with image paths)
 train: ../datasets/minneapple/train/images  # 500 img
 val: ../datasets/minneapple/val/images # 130 img
-test: ../datasets/minneapple/val/images  # 130 img
+test: ../datasets/minneapple/val2/images  # 130 img
 
 # number of classes
 nc: 1
