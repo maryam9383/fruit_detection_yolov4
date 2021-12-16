@@ -272,6 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--merge', action='store_true', help='use Merge NMS')
     parser.add_argument('--verbose', action='store_true', help='report mAP by class')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
+    parser.add_argument('--save-image', action='store_true', help='save results to *.txt')
     parser.add_argument('--rect', action='store_true', help='Use if prediction want to be done on images in their '
                                                             'original size without padding (often rectangular)')
 
@@ -291,7 +292,8 @@ if __name__ == '__main__':
              opt.single_cls,
              opt.augment,
              opt.verbose,
-             rect=opt.rect)
+             rect=opt.rect,
+             save_images=opt.save_image)
 
     elif opt.task == 'study':  # run over a range of settings and save/plot
         for weights in ['']:
