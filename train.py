@@ -303,9 +303,8 @@ def train(hyp, opt, device, tb_writer=None):
             # end batch ------------------------------------------------------------------------------------------------
 
         # name_mean_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
-        # name_loss_file = "Mean_Losses_e{:d}.txt".format(epoch)
         # save_loss(mean_losses_batches, name_mean_loss_file)
-        # save_loss(losses_batches, name_loss_file)
+
 
         # Scheduler
         scheduler.step()
@@ -395,7 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--hyp', type=str, default='', help='hyperparameters path, i.e. data/hyp.scratch.yaml')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs')
-    parser.add_argument('--accumulation', type=int, default=1, help='N batches to accumulate gradient')
+    parser.add_argument('--accumulation', type=int, default=1, help='N batches to accumulate gradient, after warm-up')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='train,test sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--mosaic', action='store_true', help='Use Mosaic data augmentation')
