@@ -1,10 +1,13 @@
 # Project
+This repository is used to explore the capabilities of YOLOv4 in detection of small objects. 
+As the main case of study, we use the [Minneapple](https://rsn.umn.edu/projects/orchard-monitoring/minneapple#results) dataset, a segmentation and detection 
+dataset of apples. 
 
-This is the implementation of "[Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036)" 
-by "[WongKinYiu et al](https://github.com/WongKinYiu/ScaledYOLOv4)". I'm not claiming ownership of the original source code. 
-Also the mish cuda implementation was provided by 
-"[Thomas Brandon](https://github.com/thomasbrandon/mish-cuda)" 
-
+# YOLOv4
+This project is based on the "[Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036)" 
+by "[WongKinYiu et al](https://github.com/WongKinYiu/ScaledYOLOv4)". I'm not claiming ownership of the original source code 
+in any way. Also the mish cuda implementation was provided by 
+"[Thomas Brandon](https://github.com/thomasbrandon/mish-cuda)"
 
 ## Installation
 
@@ -98,7 +101,8 @@ python -m torch.distributed.launch --nproc_per_node 4 train.py --batch-size 64 -
 ## Acknowledgements
 
 <details><summary> <b>Expand</b> </summary>
- 
+
+* [Thomas Brandon/Mish_cuda](https://github.com/thomasbrandon/mish-cuda)
 * [Scaled-YOLOv4: Scaling Cross Stage Partial Network](https://arxiv.org/abs/2011.08036) 
 * [https://github.com/AlexeyAB/darknet](https://github.com/AlexeyAB/darknet)
 * [https://github.com/WongKinYiu/PyTorch_YOLOv4](https://github.com/WongKinYiu/PyTorch_YOLOv4)

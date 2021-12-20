@@ -328,8 +328,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.hyp = hyp
         self.image_weights = image_weights
         self.rect = False if image_weights else (rect)
-        self.standard_size = not self.rect
-        self.mosaic = mosaic and self.standard_size  # load 4 images at a time into a mosaic (only during training)
+        assert ((mosaic and rect) == False), "Required condition. Rectangular images are not transform into mosaics"
+        self.mosaic = mosaic # load 4 images at a time into a mosaic (only during training)
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
 
@@ -558,26 +558,25 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         else:  # square images, by default.
             # Load image
             img, (h0, w0), (h, w) = load_image(self, index)
-            # shapes = (h0, w0), ((h / h0, w / w0), (0, 0))
 
-            shape = img.shape[:2]
-            labels = self.labels[index]
+            # Letterbox
+            shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
-            flipped_shape = np.flip(shape)
-            labels[:, 1:3] *= flipped_shape
-            labels[:, 3:5] *= flipped_shape
-            labels[:, 1:] = xywh2xyxy(labels[:, 1:])
-
-            padded_img = np.full([self.img_size, self.img_size, 3], 114, dtype=np.uint8)  # padding image
-            padded_img[:shape[0], :shape[1], :] = img
-            img = padded_img.copy()
-
-            shape = img.shape[:2]
-            shapes = (h0, w0), ((shape[0] / h0, shape[1] / w0), (0, 0))
+            # Load labels
+            labels = []
+            x = self.labels[index]
+            if x.size > 0:
+                # Normalized xywh to pixel xyxy format
+                labels = x.copy()
+                labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
+                labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height
+                labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
+                labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
 
         if self.augment:
             # Augment imagespace
-            # if not self.mosaic:
             if not self.mosaic:
                 img, labels = random_perspective(img, labels,
                                                  degrees=hyp['degrees'],
@@ -619,6 +618,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)
+
         return torch.from_numpy(img), labels_out, self.img_files[index], shapes
 
     @staticmethod
@@ -976,3 +976,38 @@ def create_folder(path='./new'):
     if os.path.exists(path):
         shutil.rmtree(path)  # delete output folder
     os.makedirs(path)  # make new output folder
+
+
+# path = '/home/luis/datasets/wider/dummy_wider/images'
+path = '/home/luis/datasets/minneapple/val'
+img_size=1280
+batch_size=3
+augment = True
+hyp = {'lr0': 0.01, 'momentum': 0.937, 'weight_decay': 0.0004921875, 'giou': 0.05,
+         'cls': 0.5, 'cls_pw': 1.0, 'obj': 1.0, 'obj_pw': 1.0, 'iou_t': 0.2,
+         'anchor_t': 4.0, 'fl_gamma': 0.0, 'hsv_h': 0.015, 'hsv_s': 0.7, 'hsv_v': 0.4,
+         'degrees': 0.0, 'translate': 0.05, 'scale': 0.05, 'shear': 0.0, 'perspective': 0.0,
+         'flipud': 0.0, 'fliplr': 0.5, 'mixup': 1.0}
+
+class Namespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+#         for key in self.__dict__:
+#             print("field: ",key)
+
+rect = False
+image_weights = False
+cache_images = True
+single_cls = True
+stride = 2
+pad = 0.0
+mosaic = False
+rank=-1
+
+
+dataset1 = LoadImagesAndLabels(path, img_size,batch_size, augment,hyp, rect, image_weights,
+                                  cache_images, single_cls,stride,mosaic = mosaic)
+
+
+random_index=np.random.randint(len(dataset1))
+img1,img_label1,img_name1,img_shape1 = dataset1[random_index]
