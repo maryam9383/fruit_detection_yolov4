@@ -110,7 +110,6 @@ def test(data,
             # Compute loss
             if training:  # if model has loss hyperparameters
                 loss += compute_loss([x.float() for x in train_out], targets, model)[1][:3]  # GIoU, obj, cls
-                print("\n loss: ",loss[0],'\n')
 
             # Run NMS
             t = time_synchronized()
@@ -120,6 +119,8 @@ def test(data,
             t1 += time_synchronized() - t
 
         # Statistics per image
+
+        n_imgs += batch_size
         for si, pred in enumerate(output):
             labels = targets[targets[:, 0] == si, 1:]
             nl = len(labels)
@@ -133,7 +134,6 @@ def test(data,
 
             # Append to text file
             if save_txt:
-                n_imgs += 1
                 gn = torch.tensor(shapes[si][0])[[1, 0, 1, 0]]  # normalization gain whwh
                 txt_path = str(out / Path(paths[si]).stem)
                 pred[:, :4] = scale_coords(img[si].shape[1:], pred[:, :4], shapes[si][0], shapes[si][1])  # to original
